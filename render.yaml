@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: control-acceso-rfid
+    name: control-acceso-nusefa
     runtime: node
     plan: free
     buildCommand: npm install
@@ -13,4 +13,3 @@ services:
         value: Fatima2026*
       - key: DATA_DIR
         value: /tmp/control-acceso-data
-
