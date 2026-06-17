@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de acceso RFID</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <section id="login-screen" class="login-screen">
+      <form id="login-form" class="login-card">
+        <p class="eyebrow">Colegio Nuestra Senora de Fatima - Pereira</p>
+        <h1>Ingreso administrativo</h1>
+        <p class="institutional-text">Ciencia y Virtud</p>
+        <label>Usuario<input name="username" type="text" required autocomplete="username" placeholder="Ingrese el usuario"></label>
+        <label>Contrasena<input name="password" type="password" required autocomplete="current-password" placeholder="Ingrese la contrasena"></label>
+        <button type="submit">Entrar</button>
+        <p id="login-message" class="message" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <div id="app-shell" class="app-shell" hidden>
+      <header>
+        <div>
+          <p class="eyebrow">Colegio Nuestra Senora de Fatima - Pereira</p>
+          <h1>Control de acceso</h1>
+          <p class="institutional-text">Ciencia y Virtud | Formando ciudadanos en el amor, la verdad, el respeto y la responsabilidad</p>
+        </div>
+        <div class="header-actions">
+          <span id="status" class="status">Conectando...</span>
+          <button id="logout" class="secondary" type="button">Salir</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Secciones">
+        <button class="tab active" data-tab="dashboard" type="button">Inicio</button>
+        <button class="tab" data-tab="personnel" type="button">Usuarios</button>
+        <button class="tab" data-tab="schedules" type="button">Horarios</button>
+        <button class="tab" data-tab="cards" type="button">Tarjetas</button>
+      </nav>
+
+      <main>
+        <section id="tab-dashboard" class="tab-panel">
+          <div class="stats">
+            <article class="card stat"><span>Funcionarios</span><strong id="stat-personnel">0</strong></article>
+            <article class="card stat"><span>Tarjetas activas</span><strong id="stat-cards">0</strong></article>
+            <article class="card stat"><span>Movimientos hoy</span><strong id="stat-today">0</strong></article>
+            <article class="card stat"><span>Denegados</span><strong id="stat-denied">0</strong></article>
+          </div>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Movimientos</p><h2>Ingresos y salidas por dia</h2></div></div>
+            <canvas id="daily-chart" height="130"></canvas>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Tiempo</p><h2>Movimientos por hora de hoy</h2></div><button id="refresh" class="secondary" type="button">Actualizar</button></div>
+            <canvas id="hourly-chart" height="110"></canvas>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Actividad</p><h2>Ultimos movimientos</h2></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fecha</th><th>Funcionario</th><th>Movimiento</th><th>UID</th><th>Resultado</th></tr></thead>
+                <tbody id="events"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="tab-personnel" class="tab-panel" hidden>
+          <section class="card">
+            <div class="section-title"><div><p class="eyebrow">Usuarios</p><h2>Datos personales del funcionario</h2></div></div>
+            <form id="person-form" class="grid-form">
+              <label>Nombre completo<input name="name" required maxlength="100"></label>
+              <label>Documento<input name="document" maxlength="30"></label>
+              <label>Cargo<input name="position" maxlength="80"></label>
+              <label>Grupo<input name="group" maxlength="80" placeholder="Ej. Administrativos, Docentes"></label>
+              <label>Telefono<input name="phone" maxlength="40"></label>
+              <label>Correo<input name="email" type="email" maxlength="100"></label>
+              <label class="full-field">Direccion<input name="address" maxlength="160"></label>
+              <label class="full-field">Fotografia<input id="photo-input" name="photoFile" type="file" accept="image/*"></label>
+              <button type="submit">Guardar funcionario</button>
+            </form>
+            <p id="person-message" class="message" aria-live="polite"></p>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Base de datos</p><h2>Funcionarios registrados</h2></div></div>
+            <div id="personnel-list" class="people-grid"></div>
+          </section>
+        </section>
+
+        <section id="tab-schedules" class="tab-panel" hidden>
+          <section class="card">
+            <div class="section-title"><div><p class="eyebrow">Horarios</p><h2>Agregar franja horaria</h2></div></div>
+            <form id="schedule-form" class="grid-form">
+              <label>Nombre del horario<input name="name" required placeholder="Jornada manana"></label>
+              <label>Asignar a
+                <select name="assignmentType"><option value="person">Funcionario</option><option value="group">Grupo</option></select>
+              </label>
+              <label id="schedule-person-label">Funcionario<select id="schedule-person" name="personId"></select></label>
+              <label id="schedule-group-label" hidden>Grupo<input id="schedule-group" name="groupName" list="group-options"></label>
+              <label>Hora inicio<input name="startTime" type="time" required value="07:00"></label>
+              <label>Hora fin<input name="endTime" type="time" required value="17:00"></label>
+              <fieldset class="days full-field">
+                <legend>Dias</legend>
+                <label><input type="checkbox" name="days" value="1" checked>Lun</label>
+                <label><input type="checkbox" name="days" value="2" checked>Mar</label>
+                <label><input type="checkbox" name="days" value="3" checked>Mie</label>
+                <label><input type="checkbox" name="days" value="4" checked>Jue</label>
+                <label><input type="checkbox" name="days" value="5" checked>Vie</label>
+                <label><input type="checkbox" name="days" value="6">Sab</label>
+                <label><input type="checkbox" name="days" value="0">Dom</label>
+              </fieldset>
+              <button type="submit">Guardar horario</button>
+            </form>
+            <p id="schedule-message" class="message" aria-live="polite"></p>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Franjas</p><h2>Horarios registrados</h2></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nombre</th><th>Asignacion</th><th>Dias</th><th>Horario</th><th>Acciones</th></tr></thead>
+                <tbody id="schedules"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="tab-cards" class="tab-panel" hidden>
+          <section class="card">
+            <div class="section-title"><div><p class="eyebrow">RFID</p><h2>Asociar tarjeta</h2></div></div>
+            <form id="card-form" class="grid-form">
+              <label>UID de tarjeta<input name="uid" required maxlength="32" placeholder="Ejemplo: A1B2C3D4"></label>
+              <label>Funcionario<select id="card-person" name="personnelId" required></select></label>
+              <button type="submit">Asociar tarjeta</button>
+            </form>
+            <p id="card-message" class="message" aria-live="polite"></p>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Credenciales</p><h2>Tarjetas registradas</h2></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>UID</th><th>Funcionario</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="cards"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+      <datalist id="group-options"></datalist>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: control-acceso-rfid
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        value: Fatima2026*
+      - key: DATA_DIR
+        value: /tmp/control-acceso-data
+

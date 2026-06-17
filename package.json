@@ -1,0 +1,15 @@
+{
+  "name": "control-acceso-rfid",
+  "version": "1.0.0",
+  "description": "Panel web para control de acceso con ESP32 y RC522",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
+
