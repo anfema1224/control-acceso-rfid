@@ -1,4 +1,7 @@
 const state = { personnel: [], cards: [], schedules: [], dashboard: null, editingPersonId: "" };
+let isRefreshing = false;
+let scrollTimer = null;
+let isUserScrolling = false;
 
 const loginForm = document.querySelector("#login-form");
 const loginScreen = document.querySelector("#login-screen");
@@ -41,13 +44,15 @@ function fileToDataUrl(file) {
 }
 
 function drawBarChart(canvas, labels, series) {
-  const context = canvas.getContext("2d");
-  const ratio = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth;
+  const width = Math.floor(canvas.clientWidth);
   const height = Number(canvas.getAttribute("height"));
+  if (!width || !height) return;
+
+  const context = canvas.getContext("2d");
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = width * ratio;
   canvas.height = height * ratio;
-  context.scale(ratio, ratio);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, width, height);
 
   const padding = { top: 14, right: 16, bottom: 28, left: 34 };
@@ -172,29 +177,37 @@ function renderSchedules() {
 }
 
 async function loadAll() {
-  const [dashboard, personnel, cards, schedules] = await Promise.all([
-    api("/api/dashboard"),
-    api("/api/personnel"),
-    api("/api/cards"),
-    api("/api/schedules"),
-  ]);
-  state.dashboard = dashboard;
-  state.personnel = personnel;
-  state.cards = cards;
-  state.schedules = schedules;
-  renderDashboard();
-  renderPersonnel();
-  renderSelects();
-  renderCards();
-  renderSchedules();
-  statusElement.textContent = "Servidor conectado";
-  statusElement.className = "status allowed";
+  if (isRefreshing) return;
+  isRefreshing = true;
+  statusElement.textContent = "Actualizando...";
+  try {
+    const [dashboard, personnel, cards, schedules] = await Promise.all([
+      api("/api/dashboard"),
+      api("/api/personnel"),
+      api("/api/cards"),
+      api("/api/schedules"),
+    ]);
+    state.dashboard = dashboard;
+    state.personnel = personnel;
+    state.cards = cards;
+    state.schedules = schedules;
+    renderDashboard();
+    renderPersonnel();
+    renderSelects();
+    renderCards();
+    renderSchedules();
+    statusElement.textContent = "Servidor conectado";
+    statusElement.className = "status allowed";
+  } finally {
+    isRefreshing = false;
+  }
 }
 
 function showApp() {
   loginScreen.hidden = true;
   appShell.hidden = false;
   loadAll().catch((error) => {
+    isRefreshing = false;
     statusElement.textContent = "Sin conexion";
     statusElement.className = "status denied";
     document.querySelector("#events").innerHTML = `<tr><td class="empty" colspan="5">${escapeHtml(error.message)}</td></tr>`;
@@ -342,7 +355,25 @@ window.addEventListener("resize", () => {
   if (state.dashboard && !document.querySelector("#tab-dashboard").hidden) renderDashboard();
 });
 
+window.addEventListener("scroll", () => {
+  isUserScrolling = true;
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    isUserScrolling = false;
+  }, 600);
+}, { passive: true });
+
 checkSession();
 setInterval(() => {
-  if (!appShell.hidden && !document.querySelector("#tab-dashboard").hidden) loadAll();
-}, 10000);
+  if (
+    !appShell.hidden &&
+    !document.querySelector("#tab-dashboard").hidden &&
+    !document.hidden &&
+    !isUserScrolling
+  ) {
+    loadAll().catch((error) => {
+      isRefreshing = false;
+      console.warn("No se pudo actualizar el tablero", error);
+    });
+  }
+}, 30000);
