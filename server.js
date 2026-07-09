@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { Pool } = require("pg");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -11,6 +12,13 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "database.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const sessions = new Set();
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false },
+    })
+  : null;
+let databaseReady = false;
 
 function normalizeUid(value) {
   return String(value || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
@@ -51,18 +59,56 @@ function migrateDatabase(database) {
   return migrated;
 }
 
-function readDatabase() {
+async function ensureDatabase() {
+  if (!pool || databaseReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      id TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    `INSERT INTO app_state (id, data)
+     VALUES ('main', $1::jsonb)
+     ON CONFLICT (id) DO NOTHING`,
+    [JSON.stringify(emptyDatabase())]
+  );
+  databaseReady = true;
+}
+
+async function readDatabase() {
+  if (pool) {
+    await ensureDatabase();
+    const result = await pool.query("SELECT data FROM app_state WHERE id = 'main'");
+    const database = migrateDatabase(result.rows[0]?.data || emptyDatabase());
+    await writeDatabase(database);
+    return database;
+  }
+
   if (!fs.existsSync(DB_FILE)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(DB_FILE, JSON.stringify(emptyDatabase(), null, 2));
   }
   const raw = fs.readFileSync(DB_FILE, "utf8").replace(/^\uFEFF/, "");
   const database = migrateDatabase(JSON.parse(raw));
-  writeDatabase(database);
+  await writeDatabase(database);
   return database;
 }
 
-function writeDatabase(database) {
+async function writeDatabase(database) {
+  if (pool) {
+    await ensureDatabase();
+    await pool.query(
+      `INSERT INTO app_state (id, data, updated_at)
+       VALUES ('main', $1::jsonb, NOW())
+       ON CONFLICT (id)
+       DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+      [JSON.stringify(database)]
+    );
+    return;
+  }
+
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const temporary = `${DB_FILE}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(database, null, 2));
@@ -224,7 +270,7 @@ function dashboard(database) {
 }
 
 async function handleApi(request, response, url) {
-  const database = readDatabase();
+  const database = await readDatabase();
 
   if (request.method === "GET" && url.pathname === "/api/session") {
     sendJson(response, 200, { authenticated: isAuthenticated(request) });
@@ -277,7 +323,7 @@ async function handleApi(request, response, url) {
     };
     database.events.unshift(event);
     database.events = database.events.slice(0, 2000);
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 200, { allowed, name: event.name, movement: event.movement });
     return;
   }
@@ -326,7 +372,7 @@ async function handleApi(request, response, url) {
       createdAt: new Date().toISOString(),
     };
     database.personnel.unshift(person);
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 201, person);
     return;
   }
@@ -345,7 +391,7 @@ async function handleApi(request, response, url) {
     }
     const card = { id: crypto.randomUUID(), uid, personnelId, active: body.active !== false, createdAt: new Date().toISOString() };
     database.cards.unshift(card);
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 201, { ...card, personnelName: personName(database, personnelId) });
     return;
   }
@@ -369,7 +415,7 @@ async function handleApi(request, response, url) {
       return;
     }
     database.schedules.unshift(schedule);
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 201, schedule);
     return;
   }
@@ -390,7 +436,7 @@ async function handleApi(request, response, url) {
       return;
     }
     if (typeof body.active === "boolean") person.active = body.active;
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 200, person);
     return;
   }
@@ -409,7 +455,7 @@ async function handleApi(request, response, url) {
       sendJson(response, 404, { error: "Registro no encontrado" });
       return;
     }
-    writeDatabase(database);
+    await writeDatabase(database);
     sendJson(response, 200, { ok: true });
     return;
   }
