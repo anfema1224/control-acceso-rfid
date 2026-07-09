@@ -43,48 +43,27 @@ function fileToDataUrl(file) {
   });
 }
 
-function drawBarChart(canvas, labels, series) {
-  const width = Math.floor(canvas.clientWidth);
-  const height = Number(canvas.getAttribute("height"));
-  if (!width || !height) return;
-
-  const context = canvas.getContext("2d");
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = width * ratio;
-  canvas.height = height * ratio;
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
-  context.clearRect(0, 0, width, height);
-
-  const padding = { top: 14, right: 16, bottom: 28, left: 34 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
+function renderSimpleChart(container, labels, series) {
   const max = Math.max(1, ...series.flatMap((item) => item.values));
-  const groupWidth = chartWidth / Math.max(labels.length, 1);
-
-  context.strokeStyle = "#214530";
-  context.fillStyle = "#839bb4";
-  context.font = "11px system-ui";
-  for (let index = 0; index <= 4; index++) {
-    const y = padding.top + chartHeight - (chartHeight * index) / 4;
-    context.beginPath();
-    context.moveTo(padding.left, y);
-    context.lineTo(width - padding.right, y);
-    context.stroke();
-  }
-
-  labels.forEach((label, index) => {
-    context.fillStyle = "#9fb0a6";
-    context.fillText(label, padding.left + index * groupWidth + 4, height - 8);
-    series.forEach((serie, serieIndex) => {
-      const barWidth = Math.max(5, groupWidth / (series.length + 1.7));
+  container.innerHTML = labels.map((label, index) => {
+    const bars = series.map((serie) => {
       const value = serie.values[index] || 0;
-      const barHeight = (value / max) * chartHeight;
-      const x = padding.left + index * groupWidth + 6 + serieIndex * (barWidth + 4);
-      const y = padding.top + chartHeight - barHeight;
-      context.fillStyle = serie.color;
-      context.fillRect(x, y, barWidth, barHeight);
-    });
-  });
+      const percent = Math.max(2, Math.round((value / max) * 100));
+      return `
+        <div class="chart-row">
+          <span class="chart-series" style="--series-color:${serie.color}">${escapeHtml(serie.name)}</span>
+          <div class="chart-track">
+            <span class="chart-fill" style="--bar-width:${percent}%;--bar-color:${serie.color}"></span>
+          </div>
+          <strong>${value}</strong>
+        </div>`;
+    }).join("");
+    return `
+      <article class="chart-group">
+        <div class="chart-label">${escapeHtml(label)}</div>
+        <div class="chart-bars">${bars}</div>
+      </article>`;
+  }).join("");
 }
 
 function renderDashboard() {
@@ -94,18 +73,18 @@ function renderDashboard() {
   document.querySelector("#stat-today").textContent = dashboard.totals.today;
   document.querySelector("#stat-denied").textContent = dashboard.totals.denied;
 
-  drawBarChart(
+  renderSimpleChart(
     document.querySelector("#daily-chart"),
     dashboard.days.map((item) => item.label),
     [
-      { color: "#78e8bc", values: dashboard.days.map((item) => item.ingreso) },
-      { color: "#f5d06f", values: dashboard.days.map((item) => item.salida) },
+      { name: "Ingreso", color: "#78e8bc", values: dashboard.days.map((item) => item.ingreso) },
+      { name: "Salida", color: "#f5d06f", values: dashboard.days.map((item) => item.salida) },
     ]
   );
-  drawBarChart(
+  renderSimpleChart(
     document.querySelector("#hourly-chart"),
     dashboard.hours.filter((_, index) => index % 2 === 0).map((item) => item.label),
-    [{ color: "#72a7ff", values: dashboard.hours.filter((_, index) => index % 2 === 0).map((item) => item.total) }]
+    [{ name: "Total", color: "#72a7ff", values: dashboard.hours.filter((_, index) => index % 2 === 0).map((item) => item.total) }]
   );
 
   document.querySelector("#events").innerHTML = dashboard.recent.length
@@ -349,10 +328,6 @@ document.querySelector("#refresh").addEventListener("click", loadAll);
 document.querySelector("#logout").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   showLogin("Sesion cerrada.");
-});
-
-window.addEventListener("resize", () => {
-  if (state.dashboard && !document.querySelector("#tab-dashboard").hidden) renderDashboard();
 });
 
 window.addEventListener("scroll", () => {

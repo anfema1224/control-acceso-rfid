@@ -59,7 +59,37 @@ th { color: #839bb4; font-size: .7rem; letter-spacing: .08em; text-transform: up
 .allowed { color: #78e8bc; background: rgba(101,214,173,.12); }
 .denied { color: #ff9daf; background: rgba(255,99,125,.12); }
 .empty { color: #8297ad; text-align: center; padding: 28px; }
-canvas { width: 100%; max-width: 100%; display: block; background: rgba(3, 15, 9, .32); border-radius: 12px; contain: paint; }
+.simple-chart {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(3, 15, 9, .32);
+  border: 1px solid #214530;
+  border-radius: 12px;
+}
+.compact-chart { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chart-group {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #1e3f2d;
+  border-radius: 10px;
+  background: #07160e;
+}
+.chart-label { color: #dce8f5; font-size: .8rem; font-weight: 800; }
+.chart-bars { display: grid; gap: 6px; }
+.chart-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: .76rem;
+}
+.chart-series { color: var(--series-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-track { height: 8px; overflow: hidden; border-radius: 999px; background: #123321; }
+.chart-fill { display: block; width: var(--bar-width); height: 100%; border-radius: inherit; background: var(--bar-color); }
+.chart-row strong { color: #e6edf7; font-size: .78rem; text-align: right; }
 .people-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
 .person-card { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: start; }
 .person-card button { grid-column: 1 / -1; justify-self: start; }
@@ -73,6 +103,7 @@ canvas { width: 100%; max-width: 100%; display: block; background: rgba(3, 15, 9
   .full { grid-column: auto; }
   .card, .login-card, .person-card { box-shadow: 0 10px 24px rgba(0,0,0,.16); }
   table { min-width: 620px; }
+  .compact-chart { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
@@ -82,6 +113,8 @@ canvas { width: 100%; max-width: 100%; display: block; background: rgba(3, 15, 9
   .card, .login-card, .person-card { padding: 16px; border-radius: 14px; }
   .stats { gap: 10px; }
   .tab-panel { gap: 12px; }
-  canvas { height: auto; }
   table { min-width: 560px; }
+  .simple-chart { padding: 8px; gap: 8px; }
+  .chart-group { padding: 8px; }
+  .chart-row { grid-template-columns: 58px minmax(0, 1fr) 30px; gap: 6px; }
 }
