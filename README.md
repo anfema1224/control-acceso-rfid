@@ -8,6 +8,7 @@ pagina web.
 
 - ESP32
 - Lector RFID RC522
+- Pantalla LCD 20x4 con modulo I2C
 - Tarjetas o llaveros MIFARE de 13.56 MHz
 - Rele de 3.3 V compatible o modulo con entrada logica compatible
 - Fuente adecuada para la cerradura (no alimentar la cerradura desde el ESP32)
@@ -22,9 +23,22 @@ pagina web.
 | SCK | GPIO 18 |
 | MOSI | GPIO 23 |
 | MISO | GPIO 19 |
-| RST | GPIO 22 |
+| RST | GPIO 4 |
 
 El rele se conecta al GPIO 27. El RC522 debe alimentarse solamente con 3.3 V.
+
+## Conexion LCD 20x4 I2C al ESP32
+
+| LCD I2C | ESP32 |
+|---|---|
+| VCC | 5V |
+| GND | GND |
+| SDA | GPIO 21 |
+| SCL | GPIO 22 |
+
+La direccion I2C comun es `0x27`. Si la pantalla no muestra texto, pruebe
+`0x3F` en `LCD_ADDRESS` dentro del firmware. Ajuste tambien el potenciometro
+azul del modulo I2C para regular el contraste.
 
 ## Ejecutar el servidor
 
@@ -66,7 +80,7 @@ publicada por la Policia Nacional de Colombia.
 ## Preparar el ESP32
 
 1. Instalar en Arduino IDE el soporte para placas ESP32.
-2. Instalar las librerias `MFRC522` y `ArduinoJson`.
+2. Instalar las librerias `MFRC522`, `ArduinoJson` y `LiquidCrystal_I2C`.
 3. Abrir `firmware/control_acceso/control_acceso.ino`.
 4. Cambiar `WIFI_SSID`, `WIFI_PASSWORD` y `SERVER_URL`.
 5. Seleccionar la placa ESP32 y cargar el programa.
@@ -97,6 +111,9 @@ Pestanas disponibles:
 4. Asocie el UID al funcionario desde Tarjetas.
 5. En la siguiente lectura, el servidor autorizara la tarjeta y el ESP32
    activara el rele.
+
+La pantalla LCD mostrara el estado de WiFi, lectura de tarjeta, respuesta del
+servidor, acceso permitido o denegado y nombre retornado por la plataforma.
 
 ## API
 
