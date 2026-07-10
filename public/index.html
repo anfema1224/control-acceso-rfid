@@ -33,22 +33,6 @@
         </div>
       </header>
 
-      <section class="ambient-hero" aria-label="Ambiente institucional">
-        <article class="ambient-main">
-          <img src="/assets/campus-control-access.jpg" alt="Ingreso escolar con control de acceso">
-          <div>
-            <p class="eyebrow">Seguridad escolar</p>
-            <h2>Registro confiable de ingreso y salida</h2>
-            <p>Ambiente institucional NUSEFA Pereira para el control RFID de estudiantes, funcionarios y visitantes autorizados.</p>
-          </div>
-        </article>
-        <div class="ambient-strip">
-          <img src="/assets/campus-reception.jpg" alt="Atencion administrativa escolar">
-          <img src="/assets/campus-reader.jpg" alt="Lector RFID instalado en el colegio">
-          <img src="/assets/campus-rfid-student.jpg" alt="Estudiante usando control RFID">
-        </div>
-      </section>
-
       <nav class="tabs" aria-label="Secciones">
         <button class="tab active" data-tab="dashboard" type="button">Inicio</button>
         <button class="tab" data-tab="indicators" type="button">Indicadores</button>
@@ -59,6 +43,13 @@
 
       <main>
         <section id="tab-dashboard" class="tab-panel">
+          <section class="section-hero hero-access full">
+            <div>
+              <p class="eyebrow">Seguridad escolar</p>
+              <h2>Registro confiable de ingreso y salida</h2>
+              <p>Seguimiento en tiempo real para estudiantes, funcionarios y visitantes autorizados.</p>
+            </div>
+          </section>
           <section class="card full last-entry-card">
             <div class="section-title">
               <div>
@@ -81,6 +72,13 @@
         </section>
 
         <section id="tab-indicators" class="tab-panel" hidden>
+          <section class="section-hero hero-reader full">
+            <div>
+              <p class="eyebrow">Indicadores</p>
+              <h2>Lecturas RFID y comportamiento de acceso</h2>
+              <p>Resumen visual para tomar decisiones sobre flujo, horarios y novedades.</p>
+            </div>
+          </section>
           <div class="stats">
             <article class="card stat"><span>Funcionarios</span><strong id="stat-personnel">0</strong></article>
             <article class="card stat"><span>Tarjetas activas</span><strong id="stat-cards">0</strong></article>
@@ -98,6 +96,13 @@
         </section>
 
         <section id="tab-personnel" class="tab-panel" hidden>
+          <section class="section-hero hero-reception full">
+            <div>
+              <p class="eyebrow">Gestion de usuarios</p>
+              <h2>Registro administrativo del personal</h2>
+              <p>Datos personales, fotografia, grupo y cargo en una ficha unificada.</p>
+            </div>
+          </section>
           <section class="card">
             <div class="section-title"><div><p class="eyebrow">Usuarios</p><h2>Datos personales del funcionario</h2></div></div>
             <form id="person-form" class="grid-form">
@@ -120,6 +125,13 @@
         </section>
 
         <section id="tab-schedules" class="tab-panel" hidden>
+          <section class="section-hero hero-campus full">
+            <div>
+              <p class="eyebrow">Horarios</p>
+              <h2>Franjas por persona o grupo</h2>
+              <p>Controle jornadas institucionales y valide accesos segun el tiempo autorizado.</p>
+            </div>
+          </section>
           <section class="card">
             <div class="section-title"><div><p class="eyebrow">Horarios</p><h2>Agregar franja horaria</h2></div></div>
             <form id="schedule-form" class="grid-form">
@@ -157,6 +169,13 @@
         </section>
 
         <section id="tab-cards" class="tab-panel" hidden>
+          <section class="section-hero hero-card full">
+            <div>
+              <p class="eyebrow">Tarjetas RFID</p>
+              <h2>Credenciales asociadas a usuarios</h2>
+              <p>Vincule, consulte y retire tarjetas para mantener limpio el control de acceso.</p>
+            </div>
+          </section>
           <section class="card">
             <div class="section-title"><div><p class="eyebrow">RFID</p><h2>Asociar tarjeta</h2></div></div>
             <form id="card-form" class="grid-form">
