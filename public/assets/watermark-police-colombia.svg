@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="520" viewBox="0 0 520 520" role="img" aria-label="Marca de agua Policia Nacional y bandera de Colombia">
+  <defs>
+    <linearGradient id="flag" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#fcd116"/>
+      <stop offset=".5" stop-color="#fcd116"/>
+      <stop offset=".5" stop-color="#003893"/>
+      <stop offset=".75" stop-color="#003893"/>
+      <stop offset=".75" stop-color="#ce1126"/>
+    </linearGradient>
+  </defs>
+  <circle cx="260" cy="260" r="238" fill="none" stroke="#fcd116" stroke-width="10" opacity=".58"/>
+  <circle cx="260" cy="260" r="212" fill="none" stroke="#0b4f2c" stroke-width="18" opacity=".65"/>
+  <path d="M260 82c54 34 102 42 150 38v136c0 86-58 151-150 182-92-31-150-96-150-182V120c48 4 96-4 150-38z" fill="none" stroke="#e8f2ff" stroke-width="18" stroke-linejoin="round" opacity=".84"/>
+  <path d="M260 128c37 22 74 29 111 29v94c0 61-39 106-111 132-72-26-111-71-111-132v-94c37 0 74-7 111-29z" fill="#0b4f2c" opacity=".55"/>
+  <path d="M260 158l23 70 74 1-60 43 22 70-59-43-59 43 22-70-60-43 74-1z" fill="#fcd116" opacity=".9"/>
+  <rect x="96" y="420" width="328" height="22" rx="11" fill="url(#flag)" opacity=".9"/>
+  <text x="260" y="474" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#e8f2ff" opacity=".82">POLICIA NACIONAL</text>
+</svg>
