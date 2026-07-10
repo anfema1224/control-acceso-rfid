@@ -34,6 +34,7 @@
 
       <nav class="tabs" aria-label="Secciones">
         <button class="tab active" data-tab="dashboard" type="button">Inicio</button>
+        <button class="tab" data-tab="indicators" type="button">Indicadores</button>
         <button class="tab" data-tab="personnel" type="button">Usuarios</button>
         <button class="tab" data-tab="schedules" type="button">Horarios</button>
         <button class="tab" data-tab="cards" type="button">Tarjetas</button>
@@ -41,6 +42,28 @@
 
       <main>
         <section id="tab-dashboard" class="tab-panel">
+          <section class="card full last-entry-card">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Ingreso reciente</p>
+                <h2>Ultimo ingreso registrado</h2>
+              </div>
+              <button id="refresh-home" class="secondary" type="button">Actualizar</button>
+            </div>
+            <div id="last-entry" class="last-entry"></div>
+          </section>
+          <section class="card full">
+            <div class="section-title"><div><p class="eyebrow">Actividad</p><h2>Ultimos movimientos</h2></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fecha</th><th>Funcionario</th><th>Movimiento</th><th>UID</th><th>Resultado</th></tr></thead>
+                <tbody id="events"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="tab-indicators" class="tab-panel" hidden>
           <div class="stats">
             <article class="card stat"><span>Funcionarios</span><strong id="stat-personnel">0</strong></article>
             <article class="card stat"><span>Tarjetas activas</span><strong id="stat-cards">0</strong></article>
@@ -54,15 +77,6 @@
           <section class="card full">
             <div class="section-title"><div><p class="eyebrow">Tiempo</p><h2>Movimientos por hora de hoy</h2></div><button id="refresh" class="secondary" type="button">Actualizar</button></div>
             <div id="hourly-chart" class="simple-chart compact-chart" aria-label="Movimientos por hora de hoy"></div>
-          </section>
-          <section class="card full">
-            <div class="section-title"><div><p class="eyebrow">Actividad</p><h2>Ultimos movimientos</h2></div></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Fecha</th><th>Funcionario</th><th>Movimiento</th><th>UID</th><th>Resultado</th></tr></thead>
-                <tbody id="events"></tbody>
-              </table>
-            </div>
           </section>
         </section>
 
