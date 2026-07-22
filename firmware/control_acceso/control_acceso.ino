@@ -28,10 +28,8 @@ void showIdle() {
   lcd.print("CONTROL ACCESO");
   lcd.setCursor(0, 1);
   lcd.print("NUSEFA PEREIRA");
-  lcd.setCursor(0, 2);
-  lcd.print("Acerque tarjeta");
-  lcd.setCursor(0, 3);
-  lcd.print("Sistema listo");
+  printLine(2, "esperando al after");
+  printLine(3, "icfes...");
 }
 
 void printLine(uint8_t row, const String& text) {
