@@ -112,8 +112,14 @@ Pestanas disponibles:
 5. En la siguiente lectura, el servidor autorizara la tarjeta y el ESP32
    activara el rele.
 
-La pantalla LCD mostrara el estado de WiFi, lectura de tarjeta, respuesta del
-servidor, acceso permitido o denegado y nombre retornado por la plataforma.
+La pantalla LCD 2004 I2C mostrara:
+
+- Estado de WiFi e IP del ESP32.
+- UID leido por el RC522.
+- Nombre retornado por la plataforma.
+- Resultado de acceso.
+- Movimiento del usuario: **ENTRA** cuando la API responde `ingreso` y
+  **SALE** cuando responde `salida`.
 
 ## API
 

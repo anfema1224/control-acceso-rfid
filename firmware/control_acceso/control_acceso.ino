@@ -41,6 +41,28 @@ void printLine(uint8_t row, const String& text) {
   lcd.print(padded);
 }
 
+String movementLabel(const String& movement) {
+  if (movement == "ingreso") return "ENTRA";
+  if (movement == "salida") return "SALE";
+  return "MOVIMIENTO";
+}
+
+void showAccessResult(bool allowed, const String& personName, const String& movement, const String& uid) {
+  lcd.clear();
+  if (allowed) {
+    printLine(0, "ACCESO PERMITIDO");
+    printLine(1, movementLabel(movement) + ": " + personName);
+    printLine(2, "UID " + uid);
+    printLine(3, "Puerta autorizada");
+    return;
+  }
+
+  printLine(0, "ACCESO DENEGADO");
+  printLine(1, personName);
+  printLine(2, "UID " + uid);
+  printLine(3, "Revise registro");
+}
+
 void connectWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -72,7 +94,7 @@ String readUid() {
   return uid;
 }
 
-bool requestAccess(const String& uid, String& personName) {
+bool requestAccess(const String& uid, String& personName, String& movement) {
   if (WiFi.status() != WL_CONNECTED) connectWifi();
 
   printLine(0, "Tarjeta leida");
@@ -110,11 +132,12 @@ bool requestAccess(const String& uid, String& personName) {
   }
 
   personName = response["name"] | "Desconocido";
+  movement = response["movement"] | "";
   return response["allowed"] | false;
 }
 
-void openDoor() {
-  printLine(3, "Abriendo puerta");
+void openDoor(const String& movement) {
+  printLine(3, movementLabel(movement) + " - Abriendo");
   digitalWrite(RELAY_PIN, HIGH);
   delay(OPEN_TIME_MS);
   digitalWrite(RELAY_PIN, LOW);
@@ -147,20 +170,17 @@ void loop() {
 
   String uid = readUid();
   String personName;
+  String movement;
   Serial.println("UID: " + uid);
 
-  if (requestAccess(uid, personName)) {
-    Serial.println("Acceso permitido: " + personName);
-    printLine(0, "ACCESO PERMITIDO");
-    printLine(1, personName);
-    printLine(2, "Ingreso/Salida OK");
-    openDoor();
+  bool allowed = requestAccess(uid, personName, movement);
+  showAccessResult(allowed, personName, movement, uid);
+
+  if (allowed) {
+    Serial.println("Acceso permitido: " + personName + " - " + movement);
+    openDoor(movement);
   } else {
     Serial.println("Acceso denegado: " + personName);
-    printLine(0, "ACCESO DENEGADO");
-    printLine(1, personName);
-    printLine(2, "Tarjeta no valida");
-    printLine(3, "Verifique registro");
     delay(2500);
   }
 
