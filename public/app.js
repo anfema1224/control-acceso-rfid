@@ -189,11 +189,12 @@ function renderCards() {
     ? state.cards.map((card) => `
       <tr>
         <td><code>${escapeHtml(card.uid)}</code></td>
+        <td><code>${escapeHtml(card.alternateUid || "")}</code></td>
         <td>${escapeHtml(card.personnelName)}</td>
         <td><span class="badge ${card.active ? "allowed" : "denied"}">${card.active ? "Activa" : "Bloqueada"}</span></td>
         <td><button class="small danger" data-delete-card="${card.id}" type="button">Eliminar</button></td>
       </tr>`).join("")
-    : '<tr><td class="empty" colspan="4">No hay tarjetas registradas</td></tr>';
+    : '<tr><td class="empty" colspan="5">No hay tarjetas registradas</td></tr>';
 }
 
 function renderSchedules() {

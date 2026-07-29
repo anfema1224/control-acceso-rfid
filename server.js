@@ -25,6 +25,16 @@ function normalizeUid(value) {
   return String(value || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
 }
 
+function reverseUidBytes(uid) {
+  const normalized = normalizeUid(uid);
+  if (normalized.length % 2 !== 0) return normalized;
+  return normalized.match(/../g).reverse().join("");
+}
+
+function uidVariants(uid) {
+  return [...new Set([normalizeUid(uid), reverseUidBytes(uid)])].filter(Boolean);
+}
+
 function emptyDatabase() {
   return { personnel: [], cards: [], schedules: [], events: [] };
 }
@@ -204,7 +214,16 @@ function personName(database, personnelId) {
 }
 
 function enrichCards(database) {
-  return database.cards.map((card) => ({ ...card, personnelName: personName(database, card.personnelId) }));
+  return database.cards.map((card) => ({
+    ...card,
+    alternateUid: reverseUidBytes(card.uid),
+    personnelName: personName(database, card.personnelId),
+  }));
+}
+
+function findCardByUid(database, uid) {
+  const variants = uidVariants(uid);
+  return database.cards.find((card) => variants.includes(card.uid));
 }
 
 function assignedSchedules(database, person) {
@@ -316,7 +335,7 @@ async function handleApi(request, response, url) {
       return;
     }
     const event = await mutateDatabase(async (currentDatabase) => {
-      const card = currentDatabase.cards.find((item) => item.uid === uid);
+      const card = findCardByUid(currentDatabase, uid);
       const person = card ? currentDatabase.personnel.find((item) => item.id === card.personnelId) : null;
       const now = new Date();
       const allowed = Boolean(card?.active && accessAllowed(currentDatabase, person, now));
@@ -404,12 +423,13 @@ async function handleApi(request, response, url) {
       sendJson(response, 400, { error: "UID y funcionario valido son obligatorios" });
       return;
     }
-    if (database.cards.some((card) => card.uid === uid)) {
+    const variants = uidVariants(uid);
+    if (database.cards.some((card) => variants.includes(card.uid) || uidVariants(card.uid).includes(uid))) {
       sendJson(response, 409, { error: "La tarjeta ya esta registrada" });
       return;
     }
     const card = await mutateDatabase(async (currentDatabase) => {
-      if (currentDatabase.cards.some((item) => item.uid === uid)) {
+      if (currentDatabase.cards.some((item) => variants.includes(item.uid) || uidVariants(item.uid).includes(uid))) {
         const error = new Error("La tarjeta ya esta registrada");
         error.statusCode = 409;
         throw error;
