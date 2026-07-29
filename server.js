@@ -19,6 +19,7 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 let databaseReady = false;
+let databaseMutationQueue = Promise.resolve();
 
 function normalizeUid(value) {
   return String(value || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
@@ -81,9 +82,7 @@ async function readDatabase() {
   if (pool) {
     await ensureDatabase();
     const result = await pool.query("SELECT data FROM app_state WHERE id = 'main'");
-    const database = migrateDatabase(result.rows[0]?.data || emptyDatabase());
-    await writeDatabase(database);
-    return database;
+    return migrateDatabase(result.rows[0]?.data || emptyDatabase());
   }
 
   if (!fs.existsSync(DB_FILE)) {
@@ -91,9 +90,7 @@ async function readDatabase() {
     fs.writeFileSync(DB_FILE, JSON.stringify(emptyDatabase(), null, 2));
   }
   const raw = fs.readFileSync(DB_FILE, "utf8").replace(/^\uFEFF/, "");
-  const database = migrateDatabase(JSON.parse(raw));
-  await writeDatabase(database);
-  return database;
+  return migrateDatabase(JSON.parse(raw));
 }
 
 async function writeDatabase(database) {
@@ -113,6 +110,17 @@ async function writeDatabase(database) {
   const temporary = `${DB_FILE}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(database, null, 2));
   fs.renameSync(temporary, DB_FILE);
+}
+
+async function mutateDatabase(mutator) {
+  const operation = databaseMutationQueue.then(async () => {
+    const database = await readDatabase();
+    const result = await mutator(database);
+    await writeDatabase(database);
+    return result;
+  });
+  databaseMutationQueue = operation.catch(() => {});
+  return operation;
 }
 
 function sendJson(response, status, data) {
@@ -307,24 +315,33 @@ async function handleApi(request, response, url) {
       sendJson(response, 400, { error: "UID requerido" });
       return;
     }
-    const card = database.cards.find((item) => item.uid === uid);
-    const person = card ? database.personnel.find((item) => item.id === card.personnelId) : null;
-    const allowed = Boolean(card?.active && accessAllowed(database, person, new Date()));
-    const event = {
-      id: crypto.randomUUID(),
-      uid,
-      cardId: card?.id || "",
-      personnelId: person?.id || "",
-      name: person?.name || "Tarjeta desconocida",
-      movement: allowed ? nextMovement(database, person.id, body.movement) : "denegado",
-      allowed,
-      device: String(body.device || "ESP32"),
-      createdAt: new Date().toISOString(),
-    };
-    database.events.unshift(event);
-    database.events = database.events.slice(0, 2000);
-    await writeDatabase(database);
-    sendJson(response, 200, { allowed, name: event.name, movement: event.movement });
+    const event = await mutateDatabase(async (currentDatabase) => {
+      const card = currentDatabase.cards.find((item) => item.uid === uid);
+      const person = card ? currentDatabase.personnel.find((item) => item.id === card.personnelId) : null;
+      const now = new Date();
+      const allowed = Boolean(card?.active && accessAllowed(currentDatabase, person, now));
+      const accessEvent = {
+        id: crypto.randomUUID(),
+        uid,
+        cardId: card?.id || "",
+        personnelId: person?.id || "",
+        name: person?.name || "Tarjeta desconocida",
+        movement: allowed ? nextMovement(currentDatabase, person.id, body.movement) : "denegado",
+        allowed,
+        device: String(body.device || "ESP32"),
+        createdAt: now.toISOString(),
+      };
+      currentDatabase.events.unshift(accessEvent);
+      currentDatabase.events = currentDatabase.events.slice(0, 2000);
+      return accessEvent;
+    });
+    sendJson(response, 200, {
+      allowed: event.allowed,
+      name: event.name,
+      movement: event.movement,
+      eventId: event.id,
+      createdAt: event.createdAt,
+    });
     return;
   }
 
@@ -358,21 +375,23 @@ async function handleApi(request, response, url) {
       sendJson(response, 400, { error: "El nombre es obligatorio" });
       return;
     }
-    const person = {
-      id: crypto.randomUUID(),
-      document: String(body.document || "").trim(),
-      name,
-      position: String(body.position || "").trim(),
-      group: String(body.group || "").trim(),
-      phone: String(body.phone || "").trim(),
-      email: String(body.email || "").trim(),
-      address: String(body.address || "").trim(),
-      photo: String(body.photo || ""),
-      active: body.active !== false,
-      createdAt: new Date().toISOString(),
-    };
-    database.personnel.unshift(person);
-    await writeDatabase(database);
+    const person = await mutateDatabase(async (currentDatabase) => {
+      const newPerson = {
+        id: crypto.randomUUID(),
+        document: String(body.document || "").trim(),
+        name,
+        position: String(body.position || "").trim(),
+        group: String(body.group || "").trim(),
+        phone: String(body.phone || "").trim(),
+        email: String(body.email || "").trim(),
+        address: String(body.address || "").trim(),
+        photo: String(body.photo || ""),
+        active: body.active !== false,
+        createdAt: new Date().toISOString(),
+      };
+      currentDatabase.personnel.unshift(newPerson);
+      return newPerson;
+    });
     sendJson(response, 201, person);
     return;
   }
@@ -389,9 +408,16 @@ async function handleApi(request, response, url) {
       sendJson(response, 409, { error: "La tarjeta ya esta registrada" });
       return;
     }
-    const card = { id: crypto.randomUUID(), uid, personnelId, active: body.active !== false, createdAt: new Date().toISOString() };
-    database.cards.unshift(card);
-    await writeDatabase(database);
+    const card = await mutateDatabase(async (currentDatabase) => {
+      if (currentDatabase.cards.some((item) => item.uid === uid)) {
+        const error = new Error("La tarjeta ya esta registrada");
+        error.statusCode = 409;
+        throw error;
+      }
+      const newCard = { id: crypto.randomUUID(), uid, personnelId, active: body.active !== false, createdAt: new Date().toISOString() };
+      currentDatabase.cards.unshift(newCard);
+      return newCard;
+    });
     sendJson(response, 201, { ...card, personnelName: personName(database, personnelId) });
     return;
   }
@@ -414,8 +440,9 @@ async function handleApi(request, response, url) {
       sendJson(response, 400, { error: "Debe seleccionar funcionario o grupo" });
       return;
     }
-    database.schedules.unshift(schedule);
-    await writeDatabase(database);
+    await mutateDatabase(async (currentDatabase) => {
+      currentDatabase.schedules.unshift(schedule);
+    });
     sendJson(response, 201, schedule);
     return;
   }
@@ -436,7 +463,15 @@ async function handleApi(request, response, url) {
       return;
     }
     if (typeof body.active === "boolean") person.active = body.active;
-    await writeDatabase(database);
+    await mutateDatabase(async (currentDatabase) => {
+      const currentPerson = currentDatabase.personnel.find((item) => item.id === match[2]);
+      if (!currentPerson) {
+        const error = new Error("Funcionario no encontrado");
+        error.statusCode = 404;
+        throw error;
+      }
+      Object.assign(currentPerson, person);
+    });
     sendJson(response, 200, person);
     return;
   }
@@ -446,16 +481,17 @@ async function handleApi(request, response, url) {
     const id = match[2];
     const key = collection === "personnel" ? "personnel" : collection;
     const before = database[key].length;
-    database[key] = database[key].filter((item) => item.id !== id);
-    if (collection === "personnel") {
-      database.cards = database.cards.filter((card) => card.personnelId !== id);
-      database.schedules = database.schedules.filter((schedule) => !(schedule.assignmentType === "person" && schedule.assignmentId === id));
-    }
     if (database[key].length === before) {
       sendJson(response, 404, { error: "Registro no encontrado" });
       return;
     }
-    await writeDatabase(database);
+    await mutateDatabase(async (currentDatabase) => {
+      currentDatabase[key] = currentDatabase[key].filter((item) => item.id !== id);
+      if (collection === "personnel") {
+        currentDatabase.cards = currentDatabase.cards.filter((card) => card.personnelId !== id);
+        currentDatabase.schedules = currentDatabase.schedules.filter((schedule) => !(schedule.assignmentType === "person" && schedule.assignmentId === id));
+      }
+    });
     sendJson(response, 200, { ok: true });
     return;
   }
@@ -473,7 +509,7 @@ const server = http.createServer(async (request, response) => {
     }
   } catch (error) {
     console.error(error);
-    sendJson(response, 500, { error: error.message || "Error interno" });
+    sendJson(response, error.statusCode || 500, { error: error.message || "Error interno" });
   }
 });
 

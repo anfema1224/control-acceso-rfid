@@ -1,5 +1,6 @@
 const state = { personnel: [], cards: [], schedules: [], dashboard: null, editingPersonId: "" };
 let isRefreshing = false;
+let refreshAgain = false;
 let scrollTimer = null;
 let isUserScrolling = false;
 
@@ -12,6 +13,8 @@ const statusElement = document.querySelector("#status");
 async function api(url, options) {
   const response = await fetch(url, {
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    credentials: "same-origin",
     ...options,
   });
   const data = await response.json();
@@ -212,29 +215,50 @@ function renderSchedules() {
 }
 
 async function loadAll() {
-  if (isRefreshing) return;
+  if (isRefreshing) {
+    refreshAgain = true;
+    return;
+  }
   isRefreshing = true;
-  statusElement.textContent = "Actualizando...";
   try {
-    const [dashboard, personnel, cards, schedules] = await Promise.all([
-      api("/api/dashboard"),
-      api("/api/personnel"),
-      api("/api/cards"),
-      api("/api/schedules"),
-    ]);
-    state.dashboard = dashboard;
-    state.personnel = personnel;
-    state.cards = cards;
-    state.schedules = schedules;
-    renderDashboard();
-    renderPersonnel();
-    renderSelects();
-    renderCards();
-    renderSchedules();
-    statusElement.textContent = "Servidor conectado";
-    statusElement.className = "status allowed";
+    do {
+      refreshAgain = false;
+      statusElement.textContent = "Actualizando...";
+      statusElement.className = "status";
+      try {
+        const [dashboard, personnel, cards, schedules] = await Promise.all([
+          api("/api/dashboard"),
+          api("/api/personnel"),
+          api("/api/cards"),
+          api("/api/schedules"),
+        ]);
+        state.dashboard = dashboard;
+        state.personnel = personnel;
+        state.cards = cards;
+        state.schedules = schedules;
+        renderDashboard();
+        renderPersonnel();
+        renderSelects();
+        renderCards();
+        renderSchedules();
+        statusElement.textContent = `Servidor conectado | ${new Date().toLocaleTimeString()}`;
+        statusElement.className = "status allowed";
+      } catch (error) {
+        statusElement.textContent = `Sin conexion: ${error.message}`;
+        statusElement.className = "status denied";
+        throw error;
+      }
+    } while (refreshAgain);
   } finally {
     isRefreshing = false;
+  }
+}
+
+async function refreshAll() {
+  try {
+    await loadAll();
+  } catch (error) {
+    console.warn("No se pudo actualizar el tablero", error);
   }
 }
 
@@ -380,8 +404,8 @@ document.body.addEventListener("click", async (event) => {
   }
 });
 
-document.querySelector("#refresh").addEventListener("click", loadAll);
-document.querySelector("#refresh-home").addEventListener("click", loadAll);
+document.querySelector("#refresh").addEventListener("click", refreshAll);
+document.querySelector("#refresh-home").addEventListener("click", refreshAll);
 document.querySelector("#logout").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   showLogin("Sesion cerrada.");
@@ -407,9 +431,6 @@ setInterval(() => {
     !document.hidden &&
     !isUserScrolling
   ) {
-    loadAll().catch((error) => {
-      isRefreshing = false;
-      console.warn("No se pudo actualizar el tablero", error);
-    });
+    refreshAll();
   }
 }, 30000);
