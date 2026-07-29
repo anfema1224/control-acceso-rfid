@@ -500,8 +500,7 @@ async function handleApi(request, response, url) {
     const collection = match[1];
     const id = match[2];
     const key = collection === "personnel" ? "personnel" : collection;
-    const before = database[key].length;
-    if (database[key].length === before) {
+    if (!database[key].some((item) => item.id === id)) {
       sendJson(response, 404, { error: "Registro no encontrado" });
       return;
     }
