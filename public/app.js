@@ -9,6 +9,10 @@ const loginScreen = document.querySelector("#login-screen");
 const appShell = document.querySelector("#app-shell");
 const loginMessage = document.querySelector("#login-message");
 const statusElement = document.querySelector("#status");
+const refreshButtons = [
+  document.querySelector("#refresh"),
+  document.querySelector("#refresh-home"),
+].filter(Boolean);
 
 async function api(url, options) {
   const response = await fetch(url, {
@@ -224,6 +228,7 @@ async function loadAll() {
   try {
     do {
       refreshAgain = false;
+      setRefreshButtonsLoading(true);
       statusElement.textContent = "Actualizando...";
       statusElement.className = "status";
       try {
@@ -251,11 +256,25 @@ async function loadAll() {
       }
     } while (refreshAgain);
   } finally {
+    setRefreshButtonsLoading(false);
     isRefreshing = false;
   }
 }
 
+function setRefreshButtonsLoading(loading) {
+  refreshButtons.forEach((button) => {
+    button.classList.toggle("is-refreshing", loading);
+    button.disabled = loading;
+    button.textContent = loading ? "Actualizando..." : "Actualizar";
+  });
+}
+
 async function refreshAll() {
+  refreshButtons.forEach((button) => {
+    button.classList.remove("was-pressed");
+    void button.offsetWidth;
+    button.classList.add("was-pressed");
+  });
   try {
     await loadAll();
   } catch (error) {

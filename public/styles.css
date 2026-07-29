@@ -82,10 +82,29 @@ legend { color: #aebfd1; padding: 0 8px; }
 .days { display: flex; flex-wrap: wrap; gap: 12px; }
 .days label { display: inline-flex; align-items: center; gap: 6px; }
 .days input { width: auto; }
-button { border: 0; background: #f5d06f; color: #14200f; font-weight: 800; border-radius: 10px; padding: 12px 15px; cursor: pointer; }
+button {
+  border: 0;
+  background: #f5d06f;
+  color: #14200f;
+  font-weight: 800;
+  border-radius: 10px;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background .16s ease;
+}
+button:active { transform: translateY(1px) scale(.98); }
+button:disabled { cursor: wait; opacity: .82; }
 button.secondary, button.small { background: #173c28; color: #dce8f5; }
 button.danger { background: #4b2631; color: #ffb5c2; }
 button.small { padding: 7px 10px; margin-right: 5px; font-size: .75rem; }
+button.was-pressed { animation: press-pop .38s ease; }
+button.is-refreshing {
+  color: #102617;
+  background: linear-gradient(90deg, #78e8bc, #f5d06f, #78e8bc);
+  background-size: 220% 100%;
+  box-shadow: 0 0 0 4px rgba(120, 232, 188, .2), 0 12px 28px rgba(120, 232, 188, .22);
+  animation: refresh-sweep 1s linear infinite;
+}
 .message { min-height: 22px; margin-top: 12px; color: #ffca70; }
 .login-screen {
   display: grid;
@@ -103,6 +122,17 @@ button.small { padding: 7px 10px; margin-right: 5px; font-size: .75rem; }
 table { width: 100%; border-collapse: collapse; min-width: 720px; }
 th, td { padding: 12px 10px; border-bottom: 1px solid #214530; text-align: left; font-size: .86rem; vertical-align: middle; }
 th { color: #839bb4; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+
+@keyframes press-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(.94); filter: brightness(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes refresh-sweep {
+  from { background-position: 0% 50%; }
+  to { background-position: 220% 50%; }
+}
 .badge { display: inline-block; padding: 5px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; }
 .allowed { color: #78e8bc; background: rgba(101,214,173,.12); }
 .denied { color: #ff9daf; background: rgba(255,99,125,.12); }
