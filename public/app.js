@@ -66,9 +66,9 @@ function renderSimpleChart(container, labels, series) {
   }).join("");
 }
 
-function findLastEntry() {
+function findLastRecord() {
   if (!state.dashboard?.recent) return null;
-  return state.dashboard.recent.find((event) => event.allowed && event.movement === "ingreso") || null;
+  return state.dashboard.recent[0] || null;
 }
 
 function personForEvent(event) {
@@ -80,14 +80,14 @@ function personForEvent(event) {
 
 function renderLastEntry() {
   const container = document.querySelector("#last-entry");
-  const event = findLastEntry();
+  const event = findLastRecord();
   if (!event) {
     container.innerHTML = `
       <div class="last-entry-empty">
-        <div class="avatar large-avatar">Sin ingreso</div>
+        <div class="avatar large-avatar">Sin registro</div>
         <div>
-          <h3>No hay ingresos registrados</h3>
-          <p>Cuando un funcionario ingrese con una tarjeta autorizada, aparecera aqui.</p>
+          <h3>No hay movimientos registrados</h3>
+          <p>Cuando el lector reciba una tarjeta, el ultimo registro aparecera aqui.</p>
         </div>
       </div>`;
     return;
@@ -95,12 +95,22 @@ function renderLastEntry() {
 
   const person = personForEvent(event);
   const photo = person?.photo || "";
+  const movementText = event.allowed
+    ? (event.movement === "salida" ? "SALE" : "ENTRA")
+    : "DENEGADO";
+  const movementClass = event.allowed
+    ? (event.movement === "salida" ? "movement-out" : "movement-in")
+    : "movement-denied";
+  const statusText = event.allowed ? "Acceso permitido" : "Acceso denegado";
   container.innerHTML = `
     <div class="last-entry-photo">
       ${photo ? `<img src="${photo}" alt="Foto de ${escapeHtml(event.name)}">` : '<div class="avatar large-avatar">Sin foto</div>'}
     </div>
     <div class="last-entry-info">
-      <span class="badge allowed">Ingreso permitido</span>
+      <div class="last-entry-heading">
+        <span class="badge ${event.allowed ? "allowed" : "denied"}">${statusText}</span>
+        <strong class="movement-pill ${movementClass}">${movementText}</strong>
+      </div>
       <h3>${escapeHtml(event.name)}</h3>
       <p>${escapeHtml(person?.position || "Funcionario registrado")}${person?.group ? ` | ${escapeHtml(person.group)}` : ""}</p>
       <dl>

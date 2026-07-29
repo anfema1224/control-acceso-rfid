@@ -195,6 +195,19 @@ th { color: #839bb4; font-size: .7rem; letter-spacing: .08em; text-transform: up
   text-align: center;
 }
 .last-entry-info { display: grid; gap: 12px; }
+.last-entry-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.movement-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: .95rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.movement-in { color: #092117; background: #78e8bc; }
+.movement-out { color: #221909; background: #f5d06f; }
+.movement-denied { color: #2b0710; background: #ff9daf; }
 .last-entry-info h3 { font-size: clamp(2rem, 6vw, 4.4rem); line-height: .95; letter-spacing: -.06em; }
 .last-entry-info p { color: #b8c9bf; font-size: 1rem; }
 .last-entry-info dl {
