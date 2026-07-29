@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -13,14 +14,24 @@ constexpr uint8_t LCD_SDA_PIN = 21;
 constexpr uint8_t LCD_SCL_PIN = 22;
 constexpr uint8_t LCD_ADDRESS = 0x27;
 constexpr uint32_t OPEN_TIME_MS = 3000;
+constexpr uint32_t HTTP_TIMEOUT_MS = 45000;
+constexpr uint8_t ACCESS_REQUEST_ATTEMPTS = 3;
+constexpr uint32_t RETRY_DELAY_MS = 2500;
 
 const char* WIFI_SSID = "NOMBRE_WIFI";
 const char* WIFI_PASSWORD = "CLAVE_WIFI";
-const char* SERVER_URL = "http://192.168.1.50:3000/api/access";
+const char* SERVER_URL = "https://control-acceso-nusefa.onrender.com/api/access";
 const char* DEVICE_NAME = "Puerta principal";
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 LiquidCrystal_I2C lcd(LCD_ADDRESS, 20, 4);
+WiFiClientSecure secureClient;
+
+enum AccessStatus {
+  ACCESS_ALLOWED,
+  ACCESS_DENIED,
+  ACCESS_ERROR
+};
 
 void showIdle() {
   lcd.clear();
@@ -61,6 +72,14 @@ void showAccessResult(bool allowed, const String& personName, const String& move
   printLine(3, "Revise registro");
 }
 
+void showConnectionError(const String& uid, const String& detail) {
+  lcd.clear();
+  printLine(0, "SIN RESPUESTA WEB");
+  printLine(1, "No se abre puerta");
+  printLine(2, "UID " + uid);
+  printLine(3, detail);
+}
+
 void connectWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -92,7 +111,7 @@ String readUid() {
   return uid;
 }
 
-bool requestAccess(const String& uid, String& personName, String& movement) {
+AccessStatus requestAccess(const String& uid, String& personName, String& movement, String& errorDetail) {
   if (WiFi.status() != WL_CONNECTED) connectWifi();
 
   printLine(0, "Tarjeta leida");
@@ -100,38 +119,68 @@ bool requestAccess(const String& uid, String& personName, String& movement) {
   printLine(2, "Consultando...");
   printLine(3, "Espere");
 
-  HTTPClient http;
-  http.begin(SERVER_URL);
-  http.addHeader("Content-Type", "application/json");
-
   JsonDocument request;
   request["uid"] = uid;
   request["device"] = DEVICE_NAME;
   String payload;
   serializeJson(request, payload);
 
-  int statusCode = http.POST(payload);
-  if (statusCode != HTTP_CODE_OK) {
-    Serial.printf("Error HTTP: %d\n", statusCode);
-    printLine(2, "Error servidor");
-    printLine(3, "HTTP " + String(statusCode));
+  secureClient.setInsecure();
+
+  for (uint8_t attempt = 1; attempt <= ACCESS_REQUEST_ATTEMPTS; attempt++) {
+    HTTPClient http;
+    const String serverUrl = SERVER_URL;
+    bool started = serverUrl.startsWith("https://")
+      ? http.begin(secureClient, SERVER_URL)
+      : http.begin(SERVER_URL);
+    if (!started) {
+      errorDetail = "URL invalida";
+      Serial.println("No se pudo iniciar HTTP");
+      return ACCESS_ERROR;
+    }
+
+    http.setTimeout(HTTP_TIMEOUT_MS);
+    http.addHeader("Content-Type", "application/json");
+
+    printLine(2, "Consultando web");
+    printLine(3, "Intento " + String(attempt) + "/" + String(ACCESS_REQUEST_ATTEMPTS));
+    Serial.println("Enviando UID a servidor: " + uid);
+
+    int statusCode = http.POST(payload);
+    String responseBody = http.getString();
     http.end();
-    return false;
+
+    if (statusCode != HTTP_CODE_OK) {
+      errorDetail = statusCode > 0 ? "HTTP " + String(statusCode) : http.errorToString(statusCode);
+      Serial.println("Error servidor: " + errorDetail);
+      if (attempt < ACCESS_REQUEST_ATTEMPTS) {
+        printLine(2, "Sin respuesta web");
+        printLine(3, "Reintentando...");
+        delay(RETRY_DELAY_MS);
+      }
+      continue;
+    }
+
+    JsonDocument response;
+    DeserializationError error = deserializeJson(response, responseBody);
+    if (error) {
+      errorDetail = "JSON invalido";
+      Serial.println("Respuesta JSON invalida: " + responseBody);
+      if (attempt < ACCESS_REQUEST_ATTEMPTS) {
+        printLine(2, "Respuesta invalida");
+        printLine(3, "Reintentando...");
+        delay(RETRY_DELAY_MS);
+      }
+      continue;
+    }
+
+    personName = response["name"] | "Desconocido";
+    movement = response["movement"] | "";
+    bool allowed = response["allowed"] | false;
+    return allowed ? ACCESS_ALLOWED : ACCESS_DENIED;
   }
 
-  JsonDocument response;
-  DeserializationError error = deserializeJson(response, http.getString());
-  http.end();
-  if (error) {
-    Serial.println("Respuesta JSON invalida");
-    printLine(2, "Respuesta invalida");
-    printLine(3, "Revise servidor");
-    return false;
-  }
-
-  personName = response["name"] | "Desconocido";
-  movement = response["movement"] | "";
-  return response["allowed"] | false;
+  return ACCESS_ERROR;
 }
 
 void openDoor(const String& movement) {
@@ -169,16 +218,22 @@ void loop() {
   String uid = readUid();
   String personName;
   String movement;
+  String errorDetail;
   Serial.println("UID: " + uid);
 
-  bool allowed = requestAccess(uid, personName, movement);
-  showAccessResult(allowed, personName, movement, uid);
+  AccessStatus status = requestAccess(uid, personName, movement, errorDetail);
 
-  if (allowed) {
+  if (status == ACCESS_ALLOWED) {
+    showAccessResult(true, personName, movement, uid);
     Serial.println("Acceso permitido: " + personName + " - " + movement);
     openDoor(movement);
+  } else if (status == ACCESS_DENIED) {
+    showAccessResult(false, personName, movement, uid);
+    Serial.println("Acceso denegado por servidor: " + personName);
+    delay(2500);
   } else {
-    Serial.println("Acceso denegado: " + personName);
+    showConnectionError(uid, errorDetail);
+    Serial.println("Sin respuesta valida del servidor: " + errorDetail);
     delay(2500);
   }
 
